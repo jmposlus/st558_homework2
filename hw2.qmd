@@ -1,0 +1,191 @@
+---
+title: "A Title About Programming 2: Attack of the Coders"
+format: html
+editor: visual
+---
+
+**Task 1**
+
+Let's go ahead and make our two vectors, called pre and post.
+
+```{r}
+pre<- c(130, 128, 116, 124, 133, 134, 118, 126, 114, 127, 141, 138, 128, 140, 137, 131, 120, 128, 139, 135)
+post<- c(114, 98, 113, 99, 107, 116, 113, 111, 119, 117, 101, 119, 130, 122, 106, 106, 124, 102, 117, 113)
+```
+
+It's a good thing the homework specifies that the subjects match 1 through 20, because there's literally nothing else which suggests this to be the case. To fix that, we'll go ahead and give every one a name, or more accurately, a title followed by a number.
+
+```{r}
+names(pre)<- paste("Subject", 1:20, sep = "_")
+names(post)<- paste("Subject", 1:20, sep = "_")
+```
+
+If my parents used this naming convention, I would be child_1. Now we're going to calculate the change in blood pressure across all patients.
+
+```{r}
+change<- pre-post
+```
+
+Now that we have that, we can get the average change in blood pressure across all 20 subjects.
+
+```{r}
+mean(change)
+```
+
+The average change is 17 points. Lower, because of the way that I did the subtraction. Of course not everyone experienced a decrease. Let's find out who did.
+
+```{r}
+which(change>0)
+```
+
+Next, it's time to subset the change vector to return those that only have a positive change. Because I'm a time traveler, I saw the future, and I know I have to get the average, so I'll do it twice, once for output, and once to save as its own vector to take the mean of later.
+
+```{r}
+change[which(change>0)]
+poschange<- change[which(change>0)]
+```
+
+Now it's time to get the average decrease among patients who saw a decrease.
+
+```{r}
+mean(poschange)
+```
+
+**Task 2**
+
+Now let's organize all of this in a data frame. We're going to have four columns, one for the "name", pre and post BP, and one for the difference.
+
+```{r}
+blood<- data.frame(patient = paste("Subject", 1:20, sep = "_"),
+                   pre_bp = pre, 
+                   post_bp = post,
+                   diff_bp = change)
+```
+
+Now we are going to return only the rows where the diff_bp column is negative. That will correspond to the patients whose blood pressure actually increased.
+
+```{r}
+subset(blood, diff_bp<0)
+```
+
+If I wanted the other subset of patients, all I'd need to do is flip the \< to a \>. Now, in any case, we want a True False indicator if the post treatment blood pressure is less than 120.
+
+```{r}
+blood$below120<- ifelse(blood$post_bp<120, TRUE, FALSE)
+```
+
+And lastly, we get to make a pretty table.
+
+```{r}
+knitr::kable(blood)
+```
+
+**Task 3**
+
+It turns out there was second round done with a placebo. We're going to make the data set in the table above with that new data. There were ten subjects. The homework doesn't say to do this, but I'm going to "name" them 21 through 30 so we don't get confused.
+
+```{r}
+placebo<- data.frame(patient = paste("Subject", 21:30, sep = "_"),
+                     pre_bp = c(138, 135, 147, 117, 152, 134, 114, 121, 131, 130),
+                     post_bp = c(105, 136, 123, 130, 134, 143, 135, 139, 120, 124))
+placebo$diff_bp<- placebo$pre_bp - placebo$post_bp
+placebo$below120<- ifelse(placebo$post_bp<120, TRUE,FALSE)
+```
+
+Now we get to make a list called *treatment* which has two elements: the data frame I just made and the one from task 2.
+
+```{r}
+treatment<- list(blood, placebo)
+names(treatment)<- c("treatment", "placebo")
+```
+
+Now I need to access the treatment in three different ways. I'll use comments to number them out.
+
+```{r}
+#1
+treatment[[1]]
+#2
+treatment$treatment
+#3
+treatment[["treatment"]]
+```
+
+Now that that's done, I need to access the pre_bp column from placebo in one line.
+
+```{r}
+treatment[[2]]$pre_bp
+```
+
+**Task 4**
+
+I need to insert a column called "status" into both data frames. I can't do that within the list, so I can either go back and insert it into different tasks and make the time traveler joke again, or I could just do it here and then update the list.
+
+```{r}
+blood$status<- character(20)
+placebo$status<- character(10)
+treatment<- list(blood, placebo)
+names(treatment)<- c("treatment","placebo")
+```
+
+I could have just made the status column with an ifelse statement by now but I'm not in charge here so instead we're going to use a for loop to do it. First, the treatment group.
+
+```{r}
+for(i in length(treatment[[1]])){
+  if (treatment[[1]]$post_bp[i]<120){
+    treatment[[1]]$status[i]<- "Optimal"
+  } else if (treatment[[1]]$post_bp[i]>130){
+    treatment[[1]]$status[i]<- "High"
+  } else {
+    treatment[[1]]$status[i]<- "Borderline"
+  }
+}
+```
+
+And now the placebo.
+
+```{r}
+for(i in length(treatment[[2]])){
+  if (treatment[[2]]$post_bp[i]<120){
+    treatment[[2]]$status[i]<- "Optimal"
+  } else if (treatment[[2]]$post_bp[i]>130){
+    treatment[[2]]$status[i]<- "High"
+  } else {
+    treatment[[2]]$status[i]<- "Borderline"
+  }
+}
+```
+
+Full disclosure, all I did was copy and paste that and replace the 1 index with 2 to reference the other data frame.
+
+**Task 5**
+
+We're going to write a function to do this for me. It needs to take in a list as an argument. It also needs to take an optional stat argument with the default being "mean." It will then output a list of stats of interest for the six data columns of both data frames.
+
+```{r}
+sumlist<- function(list, stat = "mean"){
+  myfun<-get(stat) #This should return mean if no other user input
+  #These three should be the stats for the treatment 
+  pre_t<- myfun(list[[1]][,2])
+  post_t<- myfun(list[[1]][,3])
+  diff_t<- myfun(list[[1]][,4])
+  #These three should be placebo stats
+  pre_p<- myfun(list[[2]][,2])
+  post_p<- myfun(list[[2]][,3])
+  diff_p<- myfun(list[[2]][,4])
+  #Now to make the list
+  output<- list(c(pre_t,post_t,diff_t,pre_p,post_p,diff_p))
+  #names(output)<- c("Pre-Treatment","Post-Treatment","Delta-Treatment",
+   #                 "Pre-Placebo","Post-Placebo","Delta-Placebo")
+  return(output)
+}
+```
+
+Moment of truth, does it work?
+
+```{r}
+sumlist(treatment)
+sumlist(treatment, "var")
+sumlist(treatment, "sd")
+sumlist(treatment, "min")
+sumlist(treatment, "max")
+```
